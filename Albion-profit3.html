@@ -1,0 +1,198 @@
+<!DOCTYPE html><html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Albion Island Business Tracker</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body{font-family:Arial,Helvetica,sans-serif;background:#0f172a;color:white;display:flex;justify-content:center;padding:30px}
+.card{background:#1e293b;padding:25px;border-radius:14px;width:480px}
+input{width:100%;padding:8px;margin:6px 0;border-radius:6px;border:none}
+button{width:100%;padding:10px;margin-top:10px;border:none;border-radius:8px;background:#22c55e;color:black;font-weight:bold;cursor:pointer}
+.result{margin-top:15px;background:#020617;padding:14px;border-radius:8px}
+label{font-size:13px}
+h1{font-size:20px;margin-bottom:6px}
+h2{font-size:16px;margin-top:18px}
+.small{font-size:12px;opacity:0.7}
+.history{margin-top:15px;background:#020617;padding:12px;border-radius:8px}
+.history-item{font-size:13px;margin-bottom:4px}
+canvas{margin-top:15px;background:#020617;border-radius:8px;padding:10px}
+.sectionToggle{margin-top:6px;margin-bottom:6px}
+</style>
+</head>
+<body><div class="card">
+<h1>Albion Island Business Tracker</h1>
+<div class="small">Farming + Animal Breeding Profit Tool</div><h2>Farming</h2>
+<label class="sectionToggle"><input type="checkbox" id="useFarming" checked> Gunakan Farming</label><label>Jumlah Plot Farming</label> <input type="number" id="farmPlots" value="0">
+
+<label>Harga 1 Bibit Tanaman</label> <input type="number" id="seedPrice" value="0">
+
+<label>Total Hasil Jual Tanaman</label> <input type="number" id="plantSellTotal" value="0">
+
+<h2>Ternak Hewan</h2>
+<label class="sectionToggle"><input type="checkbox" id="useAnimal" checked> Gunakan Ternak</label><label>Jumlah Plot Ternak</label> <input type="number" id="animalPlots" value="0">
+
+<label>Harga 1 Bibit Hewan</label> <input type="number" id="animalBabyPrice" value="0">
+
+<label>Total Pakan Yang Dikeluarkan</label> <input type="number" id="foodTotal" value="0">
+
+<label>Total Hasil Jual Hewan</label> <input type="number" id="animalSellTotal" value="0">
+
+<button onclick="simpanHari()">Simpan Hasil Hari Ini</button>
+
+<div class="result">
+<b>Modal</b>
+<p>Modal Farming: <span id="farmModal">0</span></p>
+<p>Modal Ternak: <span id="animalModal">0</span></p>
+<p>Total Modal: <span id="totalModal">0</span></p><b>Hasil</b>
+
+<p>Hasil Farming: <span id="farmResult">0</span></p>
+<p>Hasil Ternak: <span id="animalResult">0</span></p>
+<p>Total Hasil: <span id="totalResult">0</span></p><b>Profit</b>
+
+<p>Profit Hari Ini: <span id="dailyProfit">0</span></p>
+</div><div class="history">
+<b>Riwayat 7 Hari</b>
+<div id="historyList"></div>
+<p>Total Profit 7 Hari: <span id="weeklyTotal">0</span></p>
+</div><canvas id="profitChart" height="200"></canvas>
+
+</div><script>
+const useFarming=document.getElementById('useFarming');
+const useAnimal=document.getElementById('useAnimal');
+
+const farmPlots=document.getElementById('farmPlots');
+const seedPrice=document.getElementById('seedPrice');
+const plantSellTotal=document.getElementById('plantSellTotal');
+
+const animalPlots=document.getElementById('animalPlots');
+const animalBabyPrice=document.getElementById('animalBabyPrice');
+const foodTotal=document.getElementById('foodTotal');
+const animalSellTotal=document.getElementById('animalSellTotal');
+
+let history=JSON.parse(localStorage.getItem("albion_profit_history")||"[]");
+
+let chart;
+
+function hitung(){
+
+let farmModal=0;
+let farmResult=0;
+
+if(useFarming.checked){
+ let plants=farmPlots.value*9;
+ farmModal=plants*seedPrice.value;
+ farmResult=Number(plantSellTotal.value);
+}
+
+let animalModal=0;
+let animalResult=0;
+
+if(useAnimal.checked){
+ let animals=animalPlots.value*9;
+ animalModal=(animals*animalBabyPrice.value)+Number(foodTotal.value);
+ animalResult=Number(animalSellTotal.value);
+}
+
+let totalModal=farmModal+animalModal;
+let totalResult=farmResult+animalResult;
+
+let dailyProfit=totalResult-totalModal;
+
+ document.getElementById('farmModal').innerText=Number(farmModal).toLocaleString();
+ document.getElementById('animalModal').innerText=Number(animalModal).toLocaleString();
+ document.getElementById('totalModal').innerText=Number(totalModal).toLocaleString();
+
+ document.getElementById('farmResult').innerText=Number(farmResult).toLocaleString();
+ document.getElementById('animalResult').innerText=Number(animalResult).toLocaleString();
+ document.getElementById('totalResult').innerText=Number(totalResult).toLocaleString();
+
+ document.getElementById('dailyProfit').innerText=Number(dailyProfit).toLocaleString();
+
+ return dailyProfit;
+}
+
+function simpanHari(){
+
+let profit=hitung();
+
+history.push(profit);
+
+if(history.length>7){
+ history.shift();
+}
+
+localStorage.setItem("albion_profit_history",JSON.stringify(history));
+
+updateHistory();
+updateChart();
+}
+
+function updateHistory(){
+
+let list=document.getElementById('historyList');
+list.innerHTML="";
+
+let total=0;
+
+history.forEach((p,i)=>{
+
+ total+=p;
+
+ let div=document.createElement("div");
+ div.className="history-item";
+ div.innerText="Hari "+(i+1)+" : "+p.toLocaleString();
+
+ list.appendChild(div);
+
+});
+
+ document.getElementById('weeklyTotal').innerText=total.toLocaleString();
+}
+
+function updateChart(){
+
+let ctx=document.getElementById('profitChart');
+
+if(chart){
+ chart.destroy();
+}
+
+chart=new Chart(ctx,{
+ type:'line',
+ data:{
+ labels:history.map((_,i)=>"Hari "+(i+1)),
+ datasets:[{
+ label:'Profit',
+ data:history
+ }]
+ },
+ options:{
+ plugins:{
+ legend:{labels:{color:'white'}}
+ },
+ scales:{
+ x:{ticks:{color:'white'}},
+ y:{ticks:{color:'white'}}
+ }
+ }
+});
+}
+
+useFarming.oninput=hitung;
+useAnimal.oninput=hitung;
+
+farmPlots.oninput=hitung;
+seedPrice.oninput=hitung;
+plantSellTotal.oninput=hitung;
+
+animalPlots.oninput=hitung;
+animalBabyPrice.oninput=hitung;
+foodTotal.oninput=hitung;
+animalSellTotal.oninput=hitung;
+
+updateHistory();
+updateChart();
+hitung();
+</script></body>
+</html>
